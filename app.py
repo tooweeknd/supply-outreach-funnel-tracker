@@ -173,7 +173,7 @@ with tab2:
         st.success("No metrics beyond tripwires in this view.")
 
     st.subheader("Mix vs within-source decomposition")
-    st.caption("Overall reply rate is a share-weighted mix of the sources. Comparing this cohort with the trailing 4-week baseline at the same day-window splits the gap into a mix effect (volume shifting between sources) and a within-source effect (a source itself getting better or worse).")
+    st.caption(f"Overall reply rate is a share-weighted mix of the sources. Comparing this cohort with the trailing 4-week baseline (day-{maturity_day} window; a still-maturing cohort is compared at its observable age) splits the gap into a mix effect (volume shifting between sources) and a within-source effect (a source itself getting better or worse).")
     base_weeks = list(WEEKS[WEEKS < sel_week])[-4:]
     base = leads[(leads["cohort_week"].isin(base_weeks)) & (leads["source"].isin(src_sel))]
     tot_del_t, tot_del_b = int(wk["delivered"].sum()), int(base["delivered"].sum())
@@ -208,7 +208,7 @@ with tab2:
         gap = overall_t - overall_b
         within_eff = gap - mix_eff  # within-source change including any interaction
         st.markdown(
-            f"**Overall day-{maturity_day} reply rate: {overall_t:.1%} vs {overall_b:.1%} trailing 4-week baseline "
+            f"**Overall day-{maturity_day} reply rate{' (provisional)' if prov else ''}: {overall_t:.1%} vs {overall_b:.1%} trailing 4-week baseline "
             f"({gap * 100:+.1f} pts).** Of that gap, {mix_eff * 100:+.1f} pts comes from mix shift between sources "
             f"and {within_eff * 100:+.1f} pts is within-source change. Cut a dip by source and against baseline before "
             f"recommending action.")
