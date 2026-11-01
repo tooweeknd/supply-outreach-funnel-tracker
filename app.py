@@ -173,11 +173,11 @@ with tab2:
         st.success("No metrics beyond tripwires in this view.")
 
     st.subheader("Mix vs within-source decomposition")
-    st.caption(f"Overall reply rate is a share-weighted mix of the sources. Comparing this cohort with the trailing 4-week baseline (day-{maturity_day} window; a still-maturing cohort is compared at its observable age) splits the gap into a mix effect (volume shifting between sources) and a within-source effect (a source itself getting better or worse).")
+    cap_t = window_cap(sel_week, maturity_day)
+    st.caption(f"Overall reply rate is a share-weighted mix of the sources. Comparing this cohort with the trailing 4-week baseline at the same observable age (day {cap_t} of the day-{maturity_day} window) splits the gap into a mix effect (volume shifting between sources) and a within-source effect (a source itself getting better or worse).")
     base_weeks = list(WEEKS[WEEKS < sel_week])[-4:]
     base = leads[(leads["cohort_week"].isin(base_weeks)) & (leads["source"].isin(src_sel))]
     tot_del_t, tot_del_b = int(wk["delivered"].sum()), int(base["delivered"].sum())
-    cap_t = window_cap(sel_week, maturity_day)
     if not base_weeks or tot_del_b == 0 or tot_del_t == 0:
         st.info("No earlier cohorts to compare against for this view.")
     else:
@@ -188,7 +188,7 @@ with tab2:
             if del_t == 0 and del_b == 0:
                 continue
             rt = (dt["reply_day"].le(cap_t)).sum() / del_t if del_t else 0.0
-            rb = (db["reply_day"].le(maturity_day)).sum() / del_b if del_b else 0.0
+            rb = (db["reply_day"].le(cap_t)).sum() / del_b if del_b else 0.0  # baseline at the same observable age
             sh_t = del_t / tot_del_t if tot_del_t else 0.0
             sh_b = del_b / tot_del_b if tot_del_b else 0.0
             mix_eff += (sh_t - sh_b) * rb
@@ -198,17 +198,17 @@ with tab2:
                 "Source": src,
                 "Delivered share": f"{sh_t:.0%}",
                 "Share (baseline)": f"{sh_b:.0%}" if del_b else "-",
-                f"Reply rate (day-{maturity_day}{', prov.' if prov else ''})": f"{rt:.1%}" if del_t else "-",
-                "Reply rate (baseline)": f"{rb:.1%}" if del_b else "-",
+                f"Reply rate (day-{cap_t}{', prov.' if prov else ''})": f"{rt:.1%}" if del_t else "-",
+                f"Baseline reply rate (day-{cap_t})": f"{rb:.1%}" if del_b else "-",
                 "Positive share": f"{pos.sum() / rep_t:.0%}" if rep_t else "-",
             })
         st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
         overall_t = (wk["reply_day"].le(cap_t)).sum() / tot_del_t
-        overall_b = (base["reply_day"].le(maturity_day)).sum() / tot_del_b
+        overall_b = (base["reply_day"].le(cap_t)).sum() / tot_del_b  # same observable age on both sides
         gap = overall_t - overall_b
         within_eff = gap - mix_eff  # within-source change including any interaction
         st.markdown(
-            f"**Overall day-{maturity_day} reply rate{' (provisional)' if prov else ''}: {overall_t:.1%} vs {overall_b:.1%} trailing 4-week baseline "
+            f"**Overall day-{maturity_day} reply rate{' (provisional, both sides compared at day ' + str(cap_t) + ')' if prov else ''}: {overall_t:.1%} vs {overall_b:.1%} trailing 4-week baseline "
             f"({gap * 100:+.1f} pts).** Of that gap, {mix_eff * 100:+.1f} pts comes from mix shift between sources "
             f"and {within_eff * 100:+.1f} pts is within-source change. Cut a dip by source and against baseline before "
             f"recommending action.")
